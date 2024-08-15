@@ -24,17 +24,17 @@ export class StoreSys {
             input.key = uuidv4();
         }
 
-        const aDir = [input.backet, mRandomInteger(1, 999), mRandomInteger(1, 999), mRandomInteger(1, 999)];
+        let aDir = [input.backet, mRandomInteger(1, 999), mRandomInteger(1, 999), mRandomInteger(1, 999)];
         const sFile = uuidv4();
         const sHash1 = md5(data);
         const iLenFile = data.length;
         let sHash2 = '';
         for (let i = 1; i < 10; i++) {
-            console.log('data.length', data.length);
+            // console.log('data.length', data.length);
             sHash2 += String(data[Math.floor(data.length * (i * 0.1))]);
         }
         const sHash = sHash1 + '-' + sHash2 + '-' + data.length;
-        // console.log(sHash);
+        console.log(sHash);
 
 
         const oneFile = await db(conf.store.table).where({
@@ -54,12 +54,38 @@ export class StoreSys {
 
 
         } else {
-            const idFile: number = await db(conf.store.table).insert({
+            const idFile: number = (await db(conf.store.table).insert({
                 backet: input.backet,
                 key: input.key,
                 path: sDir,
                 hash: sHash
-            })
+            }))[0]
+
+            // В случае если последовательное заполнение папок
+            if (conf.store.alg == 'line') {
+                aDir = [input.backet];
+                if (idFile < 999_999_999) {
+                    aDir.push(0);
+                } else {
+                    aDir.push(Math.floor(idFile / 1_000_000_000))
+                }
+                if (idFile < 999_999) {
+                    aDir.push(0);
+                } else {
+                    aDir.push(Math.floor(idFile / 1_000_000))
+                }
+                if (idFile < 1000) {
+                    aDir.push(0);
+                } else {
+                    aDir.push(Math.floor(idFile / 1000))
+                }
+
+                sDir = aDir.join('/')
+
+                await db(conf.store.table).where('id', idFile).update({
+                    path: sDir
+                })
+            }
 
             const bAccess = await maAccessDir(conf.store.dir + '/' + sDir)
             if (bAccess) {
@@ -69,36 +95,10 @@ export class StoreSys {
                 await maMkDir(conf.store.dir + '/' + sDir, { recursive: true, mode: 0o774 })
             }
 
-            await maWriteFile(conf.store.dir + '/' + sDir + '/' + input.key, data, { encoding: 'binary' });
+            await maWriteFile(conf.store.dir + '/' + sDir + '/' + sHash, data, { encoding: 'binary' });
         }
 
-        // if (idFile < 999_999_999) {
-        //     aDir.push(0);
-        // } else {
-        //     aDir.push(idFile / Math.floor(1_000_000_000))
-        // }
-        // if (idFile < 999_999) {
-        //     aDir.push(0);
-        // } else {
-        //     aDir.push(idFile / Math.floor(1_000_000))
-        // }
-        // if (idFile < 999) {
-        //     aDir.push(0);
-        // } else {
-        //     aDir.push(idFile / Math.floor(1_000))
-        // }
-
-
-
-
-
-
-        // const idFile: number = await db(conf.store.table).update({
-        //     backet: input.backet,
-        //     key: input.key
-        // })
-
-        const sFileKey = sDir + '/' + input.key
+        const sFileKey = sDir + '/' + sHash
 
         console.log('END>>>', sFileKey)
 
@@ -165,6 +165,7 @@ export class StoreSys {
 
 
                 table.unique(['backet', 'key'], { indexName: 'backet_key' })
+                table.unique(['backet', 'hash'], { indexName: 'backet_hash' })
 
             });
         }

@@ -11,7 +11,6 @@ export const faSendRouter = async (ctx: AAContext, data: any): Promise<boolean> 
         ctx.send(JSON.stringify({
             ok: true,
             e: false,
-            n: ctx.n,
             data: data
         }));
     } catch (e) {
