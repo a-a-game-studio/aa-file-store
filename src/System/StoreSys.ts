@@ -92,7 +92,7 @@ export class StoreSys {
                 console.log('ПАПКА ЕСТЬ')
             } else {
                 console.log('ПАПКИ НЕТ')
-                await maMkDir(conf.store.dir + '/' + sDir, { recursive: true, mode: 0o774 })
+                await maMkDir(conf.store.dir + '/' + sDir, { recursive: true, mode: 0o775 })
             }
 
             await maWriteFile(conf.store.dir + '/' + sDir + '/' + sHash, data, { encoding: 'binary' });
